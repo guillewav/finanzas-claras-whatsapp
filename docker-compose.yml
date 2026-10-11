@@ -1,0 +1,67 @@
+# Despliegue continuo de Finanzas Claras en un servidor con GPU NVIDIA.
+# Uso: cp .env.example .env  (llenarlo)  ->  docker compose up -d --build
+services:
+  ollama:
+    image: "${OLLAMA_IMAGE:-ollama/ollama:latest}"   # fija una versión (ej. ollama/ollama:0.12.6) una vez que funcione
+    restart: unless-stopped
+    volumes: [ollama:/root/.ollama]
+    deploy:
+      resources:
+        reservations:
+          devices: [{driver: nvidia, count: all, capabilities: [gpu]}]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      retries: 30
+
+  ollama-init:            # descarga los modelos una sola vez (quedan en el volumen)
+    image: "${OLLAMA_IMAGE:-ollama/ollama:latest}"
+    environment: [OLLAMA_HOST=ollama:11434]
+    entrypoint: ["sh", "-c", "ollama pull llama3.1:8b && ollama pull llama-guard3"]
+    depends_on:
+      ollama: {condition: service_healthy}
+
+  llama-stack:
+    build: {context: ., dockerfile: docker/llama-stack.Dockerfile}
+    restart: unless-stopped
+    environment:
+      - OLLAMA_URL=http://ollama:11434/v1
+      - SQLITE_STORE_DIR=/data          # conversaciones persistentes entre reinicios
+    volumes: [llama-stack:/data]
+    depends_on:
+      ollama-init: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8321/v1/health')"]
+      interval: 10s
+      retries: 30
+
+  app:
+    build: {context: ., dockerfile: docker/app.Dockerfile}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - LLAMA_STACK_URL=http://llama-stack:8321
+      - DB_PATH=/data/finanzas_claras.db
+    volumes:
+      - app-data:/data                  # SQLite + caché de Hugging Face
+      - ./docs:/srv/docs                # los scripts escriben gráficas y resultados directo al repo
+    depends_on:
+      llama-stack: {condition: service_healthy}
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      - "DOMINIO=${DOMINIO}"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy:/data
+    depends_on: [app]
+
+volumes:
+  ollama:
+  llama-stack:
+  app-data:
+  caddy:

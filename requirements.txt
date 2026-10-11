@@ -1,0 +1,12 @@
+# Dependencias del servidor del agente (contenedor "app").
+# torch se instala aparte en el Dockerfile (versión CPU) para no descargar CUDA en este contenedor.
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
+requests>=2.32
+numpy>=2.0
+ollama==0.6.3
+llama-stack-client==0.7.3
+sentence-transformers==6.1.0
+transformers==5.19.0
+huggingface_hub>=0.30
+matplotlib>=3.9
