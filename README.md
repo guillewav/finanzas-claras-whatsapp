@@ -3,7 +3,7 @@
 **Hackathon 2 · Módulo 2: Automatización inteligente con WhatsApp** · Curso *IA Aplicada con Llama* (CPFIA)
 Autor: Ángel Guillermo Díaz Luna · [LinkedIn](https://www.linkedin.com/in/angelgdl)
 
-Agente de WhatsApp que **registra gastos escritos en lenguaje natural**, te dice **cómo vas contra tu presupuesto** y **resuelve dudas de finanzas personales** con base en una guía propia (RAG). Corre sobre **Llama 3.1 8B** con *function calling*, tiene memoria por usuario, dos capas de seguridad (**Llama Guard 3** y **Prompt Guard 2**) y está desplegado de forma continua con Docker en un servidor con GPU.
+Agente de WhatsApp que **registra gastos escritos en lenguaje natural**, te dice **cómo vas contra tu presupuesto** y **resuelve dudas de finanzas personales** con base en una guía propia (RAG). Corre sobre **Llama 3.1 8B** con *function calling*, tiene memoria por usuario, dos capas de seguridad (**Llama Guard 3** y **Prompt Guard 2**) y la demo se desplegó en **Google Colab (GPU T4)** expuesta a WhatsApp con **ngrok**. El repositorio incluye además el `docker-compose.yml` para un despliegue continuo en un servidor con GPU.
 
 ![Arquitectura](docs/img/arquitectura.png)
 
@@ -64,24 +64,17 @@ Sí, con 5 herramientas: 4 de acción, que leen y escriben datos reales, y 1 de 
 
 ## 4. Resultados
 
-> Evidencia generada con el agente desplegado: las capturas de WhatsApp y las gráficas salen de la base de datos real del servidor.
+> Evidencia generada con el agente corriendo en Colab (GPU T4) y conectado a WhatsApp por ngrok: las gráficas y las métricas salen de la base de datos de esa sesión (celda 13.1 del notebook).
 
-### Agente funcionando en WhatsApp
+### Conversaciones
 
-| Registro de gastos y memoria | Presupuesto y resumen |
-|---|---|
-| ![](docs/img/capturas/04_whatsapp_registro_gastos.png) | ![](docs/img/capturas/05_whatsapp_resumen_presupuesto.png) |
-
-| Dudas con RAG (Diagnóstico · Acción · Por qué importa) | Fuera de alcance |
-|---|---|
-| ![](docs/img/capturas/06_whatsapp_rag.png) | ![](docs/img/capturas/07_whatsapp_fuera_de_alcance.png) |
-
-| Seguridad: inyección y contenido peligroso | Borrar datos y mensajes que no son texto |
-|---|---|
-| ![](docs/img/capturas/08_whatsapp_seguridad.png) | ![](docs/img/capturas/09_whatsapp_borrar_y_audio.png) |
+Las respuestas del agente están en las salidas del [notebook ejecutado](notebooks/Hackathon_2_Finanzas_Claras_Agente_WhatsApp.ipynb): la sección 9 muestra los 13 casos de prueba con su respuesta, y la sección 12 la revisión de los mensajes reales recibidos por WhatsApp (métricas, bloqueos y memoria de la conversación).
 
 ### Pruebas de punta a punta con los modelos reales
-Tabla completa (ruta esperada vs. obtenida y respuesta del agente): [`docs/resultados/casos_de_prueba.md`](docs/resultados/casos_de_prueba.md)
+
+13 casos corridos en Colab con Llama 3.1 8B y Llama Guard 3, sin pasar por WhatsApp (sección 9 del notebook). En esta sesión Prompt Guard 2 no cargó porque el acceso al repositorio restringido seguía pendiente, así que la capa de manipulación operó con la heurística de respaldo.
+
+Tabla completa (ruta esperada vs. obtenida): [`docs/resultados/casos_de_prueba.md`](docs/resultados/casos_de_prueba.md)
 
 ### Métricas de operación
 
@@ -95,9 +88,9 @@ Resumen numérico: [`docs/resultados/metricas.json`](docs/resultados/metricas.js
 
 ### Despliegue
 
-| Contenedores en el servidor | Salud del agente (`/health`) | Webhook verificado en Meta |
-|---|---|---|
-| ![](docs/img/capturas/02_docker_compose_ps.png) | ![](docs/img/capturas/03_health.png) | ![](docs/img/capturas/01_meta_webhook.png) |
+Servidor FastAPI y túnel de ngrok levantados desde Colab (sección 11 del notebook):
+
+![Servidor y túnel de ngrok en Colab](docs/img/capturas/02_colab_ngrok.png)
 
 ## 5. Estructura del repositorio
 
@@ -113,17 +106,29 @@ app/
   db.py            SQLite: gastos, presupuestos, conversaciones, wamids, métricas, errores, bloqueos
   metricas.py      Volumen, tasa de error, p50/p95, alertas
 scripts/
-  probar_agente.py     13 casos de punta a punta con los modelos reales → docs/resultados/casos_de_prueba.md
+  probar_agente.py     13 casos de punta a punta con los modelos reales → docs/resultados/casos_de_prueba.md (en Docker)
   generar_graficas.py  Gráficas de latencia, rutas y herramientas desde la base real
 docker/            Dockerfiles, arranque de Llama Stack y Caddyfile (HTTPS automático)
-notebooks/         Notebook de Colab con el desarrollo paso a paso, explicado en Markdown
+notebooks/         Notebook de Colab ejecutado: desarrollo paso a paso, demo con ngrok y evidencias (celda 13.1)
 tests/             Pruebas automáticas sin modelos (corren en GitHub Actions)
 docs/DESPLIEGUE.md Guía de despliegue y operación (runbook)
 ```
 
 ## 6. Cómo desplegarlo
 
-Resumen (guía completa en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md)):
+### Opción A · Colab + ngrok (así corrió la demo)
+
+1. Abre [`notebooks/Hackathon_2_Finanzas_Claras_Agente_WhatsApp.ipynb`](notebooks/Hackathon_2_Finanzas_Claras_Agente_WhatsApp.ipynb) en Google Colab con entorno **T4 GPU**.
+2. Carga en *Secrets* `WHATSAPP_ACCESS_TOKEN`, `PHONE_NUMBER_ID`, `WABA_TOKEN_ID` y `NGROK_AUTHTOKEN` (opcionales: `HF_TOKEN` y `WHATSAPP_APP_SECRET`).
+3. Corre las secciones 1 a 9; la sección 9 prueba los 13 casos sin WhatsApp.
+4. Corre las secciones 10 y 11 y pega en Meta la **Callback URL** que imprime el notebook, con el Verify token `mi_token` y el campo `messages` suscrito.
+5. La celda 13.1 genera las gráficas, `metricas.json` y `casos_de_prueba.md`.
+
+El agente vive mientras la sesión de Colab esté abierta. Para dejarlo corriendo de forma continua está la opción B.
+
+### Opción B · Docker en un servidor con GPU (despliegue continuo)
+
+Esta opción quedó preparada, pero no se levantó para la demo: las imágenes todavía no se han construido ni probado con los modelos reales. Resumen (guía completa en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md)):
 
 ```bash
 git clone https://github.com/<usuario>/finanzas-claras-whatsapp.git && cd finanzas-claras-whatsapp

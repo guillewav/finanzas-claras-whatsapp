@@ -1,0 +1,29 @@
+{
+  "total": 19,
+  "volumen_por_hora": {
+    "2026-10-11 18h": 19
+  },
+  "por_ruta": {
+    "regla_bienvenida": 2,
+    "llama": 14,
+    "bloqueado_prompt_guard": 1,
+    "bloqueado_llama_guard_entrada": 2
+  },
+  "tasa_error": 0.0,
+  "latencia_promedio_s": 8.5,
+  "latencia_p50_s": 4.37,
+  "latencia_p95_s": 29.22,
+  "latencia_p95_llama_s": 29.37,
+  "bloqueos_por_capa": {
+    "heuristica_respaldo": 1,
+    "llama_guard_entrada": 2
+  },
+  "causas_de_error": {},
+  "herramientas_mas_usadas": {
+    "buscar_en_guia": 5,
+    "registrar_gasto": 3,
+    "definir_presupuesto": 2,
+    "resumen_gastos": 2,
+    "deshacer_ultimo_gasto": 1
+  }
+}
